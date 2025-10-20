@@ -3,13 +3,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Copy, NotebookText } from 'lucide-react';
+import { Plus, X, Copy, NotebookText, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
+import { useTheme } from "next-themes";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Tab = {
   id: string;
@@ -28,7 +34,8 @@ export default function Home() {
   const [editingTitle, setEditingTitle] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
+  const { setTheme } = useTheme();
 
   useEffect(() => {
     setIsMounted(true);
@@ -123,7 +130,7 @@ export default function Home() {
     const currentTab = tabs.find(tab => tab.id === activeTab);
     if (!currentTab) return;
 
-    const newContent = currentTab.content === '' ? '' : currentTab.content + '\n';
+    const newContent = currentTab.content + '\n';
     setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, content: newContent } : tab));
   };
 
@@ -188,16 +195,43 @@ export default function Home() {
     );
   }
 
-  const linesForCurrentTab = (tabs.find(t => t.id === activeTab)?.content ?? '') === '' ? [''] : (tabs.find(t => t.id === activeTab)?.content ?? '').split('\n');
+  const linesForCurrentTab = (tabs.find(t => t.id === activeTab)?.content ?? '').split('\n');
 
   return (
     <main className="container mx-auto p-4 md:p-8 font-headline">
-      <header className="flex items-center gap-2 md:gap-4 mb-6">
-        <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" />
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipintarNoted</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Your simple and smart notes, organized.</p>
+      <header className="flex items-center justify-between gap-2 md:gap-4 mb-6">
+        <div className="flex items-center gap-2 md:gap-4">
+          <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipintarNoted</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Your simple and smart notes, organized.</p>
+          </div>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Palette className="h-5 w-5" />
+              <span className="sr-only">Change theme</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setTheme("theme-default")}>
+              Default
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("theme-rose")}>
+              Rose
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("theme-green")}>
+              Green
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("theme-orange")}>
+              Orange
+            </DropdownMenuItem>
+             <DropdownMenuItem onClick={() => setTheme("dark")}>
+              Dark
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -215,19 +249,25 @@ export default function Home() {
                   onDoubleClick={() => handleStartEditingTitle(tab)}
                 >
                   {editingTabId === tab.id ? (
-                    <Input
+                     <Textarea
                       ref={titleInputRef}
-                      type="text"
                       value={editingTitle}
                       onChange={(e) => setEditingTitle(e.target.value)}
                       onBlur={handleSaveTitle}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                      className="h-full px-4 py-3 text-sm bg-background/50 focus-visible:ring-accent"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveTitle();
+                        }
+                      }}
+                      className="h-full px-4 py-3 text-sm bg-background/50 focus-visible:ring-accent w-full resize-none overflow-hidden min-h-[40px] text-center"
+                      rows={1}
+                      onInput={(e) => autoResizeTextarea(e.currentTarget)}
                     />
                   ) : (
                     <>
                       <span className="max-w-[100px] md:max-w-[150px] truncate" title={tab.title}>{tab.title}</span>
-                      <Button
+                       <Button
                         asChild
                         variant="ghost"
                         size="icon"
