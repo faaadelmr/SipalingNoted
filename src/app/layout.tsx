@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
   title: 'SipintarNoted',
-  description: 'Organize your notes with tabs and easy line-by-line copy.',
+  description: 'Atur catatan Anda dengan tab dan salin baris demi baris dengan mudah.',
 };
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -36,3 +36,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

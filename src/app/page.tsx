@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Copy, NotebookText, Palette } from 'lucide-react';
+import { Plus, X, Copy, NotebookText, Palette, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useTheme } from "next-themes";
@@ -16,15 +17,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+type Line = {
+  id: string;
+  text: string;
+  style: 'normal' | 'heading';
+};
 
 type Tab = {
   id: string;
   title: string;
-  content: string;
+  content: Line[];
 };
 
 const defaultTabs: Tab[] = [
-  { id: '1', title: 'My First Note', content: 'Welcome to SipintarNoted!\n- This is your first line.\n- Double-click a tab title to edit it.\n- Add new lines below.' },
+  { 
+    id: '1', 
+    title: 'Catatan Pertamaku', 
+    content: [
+      { id: Date.now() + '1', text: 'Selamat Datang di SipintarNoted!', style: 'heading'},
+      { id: Date.now() + '2', text: '- Ini adalah baris pertamamu.', style: 'normal'},
+      { id: Date.now() + '3', text: '- Klik dua kali pada judul tab untuk mengeditnya.', style: 'normal'},
+      { id: Date.now() + '4', text: '- Tambahkan baris baru di bawah.', style: 'normal'}
+    ] 
+  },
 ];
 
 export default function Home() {
@@ -42,8 +63,26 @@ export default function Home() {
     try {
       const savedTabs = localStorage.getItem('sipintar-notes-tabs');
       const savedActiveTab = localStorage.getItem('sipintar-notes-activeTab');
+      
+      let parsedTabs: Tab[] = [];
+
       if (savedTabs) {
-        const parsedTabs = JSON.parse(savedTabs);
+        const rawTabs = JSON.parse(savedTabs);
+        // Migrasi data dari format lama
+        parsedTabs = rawTabs.map((tab: any) => {
+          if (typeof tab.content === 'string') {
+            return {
+              ...tab,
+              content: tab.content.split('\n').map((lineText: string) => ({
+                id: Date.now() + Math.random().toString(),
+                text: lineText,
+                style: 'normal',
+              })),
+            };
+          }
+          return tab;
+        });
+
         if (Array.isArray(parsedTabs) && parsedTabs.length > 0) {
             setTabs(parsedTabs);
             if (savedActiveTab && parsedTabs.some((t: Tab) => t.id === savedActiveTab)) {
@@ -60,7 +99,7 @@ export default function Home() {
         setActiveTab(defaultTabs[0].id);
       }
     } catch (error) {
-      console.error("Failed to load notes from localStorage", error);
+      console.error("Gagal memuat catatan dari localStorage", error);
       setTabs(defaultTabs);
       setActiveTab(defaultTabs[0].id);
     }
@@ -86,8 +125,8 @@ export default function Home() {
     const newTabId = Date.now().toString();
     const newTab: Tab = {
       id: newTabId,
-      title: `Note ${tabs.length + 1}`,
-      content: '',
+      title: `Catatan ${tabs.length + 1}`,
+      content: [{id: Date.now().toString(), text: '', style: 'normal' }],
     };
     setTabs([...tabs, newTab]);
     setActiveTab(newTabId);
@@ -97,17 +136,19 @@ export default function Home() {
     if (tabs.length === 1) {
       toast({
         variant: "destructive",
-        title: "Cannot delete last tab",
-        description: "You must have at least one note.",
+        title: "Tidak dapat menghapus tab terakhir",
+        description: "Anda harus memiliki setidaknya satu catatan.",
       });
       return;
     }
 
+    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
     const newTabs = tabs.filter((tab) => tab.id !== tabId);
     setTabs(newTabs);
 
     if (activeTab === tabId) {
-      setActiveTab(newTabs[0]?.id || '');
+       const newActiveIndex = Math.max(0, tabIndex - 1);
+       setActiveTab(newTabs[newActiveIndex]?.id || '');
     }
   };
 
@@ -115,51 +156,68 @@ export default function Home() {
     setActiveTab(tabId);
   };
 
-  const handleLineChange = (lineIndex: number, newValue: string) => {
-    const currentTab = tabs.find(tab => tab.id === activeTab);
-    if (!currentTab) return;
-
-    const lines = currentTab.content.split('\n');
-    lines[lineIndex] = newValue;
-    const newContent = lines.join('\n');
-
-    setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, content: newContent } : tab));
+  const updateLine = (lineId: string, newText: string) => {
+    setTabs(tabs.map(tab => {
+        if (tab.id !== activeTab) return tab;
+        const newContent = tab.content.map(line => line.id === lineId ? { ...line, text: newText } : line);
+        return { ...tab, content: newContent };
+    }));
   };
+
+  const updateLineStyle = (lineId: string, newStyle: 'normal' | 'heading') => {
+     setTabs(tabs.map(tab => {
+        if (tab.id !== activeTab) return tab;
+        const newContent = tab.content.map(line => line.id === lineId ? { ...line, style: newStyle } : line);
+        return { ...tab, content: newContent };
+    }));
+  }
   
-  const handleAddLine = () => {
-    const currentTab = tabs.find(tab => tab.id === activeTab);
-    if (!currentTab) return;
+  const handleAddLine = (afterLineId?: string) => {
+     setTabs(tabs.map(tab => {
+        if (tab.id !== activeTab) return tab;
+        
+        const newLine: Line = { id: Date.now().toString(), text: '', style: 'normal'};
+        const newContent = [...tab.content];
+        
+        if (afterLineId) {
+            const index = newContent.findIndex(line => line.id === afterLineId);
+            if (index > -1) {
+                newContent.splice(index + 1, 0, newLine);
+            } else {
+                 newContent.push(newLine);
+            }
+        } else {
+            newContent.push(newLine);
+        }
 
-    const newContent = currentTab.content + '\n';
-    setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, content: newContent } : tab));
+        return { ...tab, content: newContent };
+    }));
   };
 
 
-  const handleRemoveLine = (lineIndex: number) => {
-    const currentTab = tabs.find(tab => tab.id === activeTab);
-    if (!currentTab) return;
-    
-    const lines = currentTab.content.split('\n');
-    if (lines.length <= 1) {
-        handleLineChange(0, "");
-        return;
-    }
+  const handleRemoveLine = (lineId: string) => {
+    setTabs(tabs.map(tab => {
+        if (tab.id !== activeTab) return tab;
 
-    lines.splice(lineIndex, 1);
-    const newContent = lines.join('\n');
-    setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, content: newContent } : tab));
+        if (tab.content.length <= 1) {
+            return { ...tab, content: [{ id: Date.now().toString(), text: '', style: 'normal'}] };
+        }
+
+        const newContent = tab.content.filter(line => line.id !== lineId);
+        return { ...tab, content: newContent };
+    }));
   };
 
   const copyLine = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       toast({
-        title: 'Copied to clipboard!',
+        title: 'Disalin ke papan klip!',
         description: `"${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`,
       });
     }, () => {
       toast({
         variant: "destructive",
-        title: 'Failed to copy!',
+        title: 'Gagal menyalin!',
       });
     });
   };
@@ -171,7 +229,7 @@ export default function Home() {
 
   const handleSaveTitle = () => {
     if (!editingTabId) return;
-    setTabs(tabs.map(tab => tab.id === editingTabId ? { ...tab, title: editingTitle.trim() || "Untitled" } : tab));
+    setTabs(tabs.map(tab => tab.id === editingTabId ? { ...tab, title: editingTitle.trim() || "Tanpa Judul" } : tab));
     setEditingTabId(null);
   };
 
@@ -195,7 +253,7 @@ export default function Home() {
     );
   }
 
-  const linesForCurrentTab = (tabs.find(t => t.id === activeTab)?.content ?? '').split('\n');
+  const currentTab = tabs.find(t => t.id === activeTab);
 
   return (
     <main className="container mx-auto p-4 md:p-8 font-headline">
@@ -204,14 +262,14 @@ export default function Home() {
           <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" />
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipintarNoted</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Your simple and smart notes, organized.</p>
+            <p className="text-sm md:text-base text-muted-foreground">Catatan sederhana dan cerdas Anda, terorganisir.</p>
           </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
               <Palette className="h-5 w-5" />
-              <span className="sr-only">Change theme</span>
+              <span className="sr-only">Ubah tema</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -219,16 +277,16 @@ export default function Home() {
               Default
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("theme-rose")}>
-              Rose
+              Mawar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("theme-green")}>
-              Green
+              Hijau
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("theme-orange")}>
-              Orange
+              Jeruk
             </DropdownMenuItem>
              <DropdownMenuItem onClick={() => setTheme("dark")}>
-              Dark
+              Gelap
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -271,7 +329,7 @@ export default function Home() {
                         asChild
                         variant="ghost"
                         size="icon"
-                        aria-label="Remove tab"
+                        aria-label="Hapus tab"
                         className="absolute top-1/2 right-0 -translate-y-1/2 w-6 h-6 ml-2 opacity-0 group-hover:opacity-100 data-[state=active]:opacity-100 transition-opacity"
                         onClick={(e) => { e.stopPropagation(); handleRemoveTab(tab.id); }}
                       >
@@ -286,7 +344,7 @@ export default function Home() {
             </TabsList>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          <Button variant="ghost" size="icon" onClick={handleAddTab} className="ml-2" aria-label="Add new tab">
+          <Button variant="ghost" size="icon" onClick={() => handleAddTab()} className="ml-2" aria-label="Tambah tab baru">
             <Plus className="w-5 h-5 text-accent hover:text-accent/80 transition-colors" />
           </Button>
         </div>
@@ -296,32 +354,57 @@ export default function Home() {
             <Card className="mt-4 shadow-md border-transparent bg-card/50">
               <CardContent className="p-2 md:p-6">
                 <div className="space-y-1">
-                  {linesForCurrentTab.map((line, index) => (
-                    <div key={`${tab.id}-${index}`} className="flex items-start group gap-1 sm:gap-2 rounded-md hover:bg-muted/50 transition-colors">
+                  {currentTab && currentTab.id === tab.id && currentTab.content.map((line, index) => (
+                    <div key={line.id} className="flex items-start group gap-1 sm:gap-2 rounded-md hover:bg-muted/50 transition-colors">
                       <Textarea
-                        value={line}
+                        value={line.text}
                         onChange={(e) => {
-                          handleLineChange(index, e.target.value);
+                          updateLine(line.id, e.target.value);
                           autoResizeTextarea(e.target);
                         }}
-                        placeholder="Type something..."
-                        className="flex-grow bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 text-base resize-none overflow-hidden min-h-[40px]"
+                         onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddLine(line.id);
+                            }
+                         }}
+                        placeholder="Ketik sesuatu..."
+                        className={cn(
+                          "flex-grow bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 resize-none overflow-hidden min-h-[40px]",
+                          {
+                            'text-lg md:text-xl font-bold': line.style === 'heading',
+                            'text-base': line.style === 'normal',
+                          }
+                        )}
                         rows={1}
                       />
                       <div className="flex items-center opacity-100 md:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pr-1 sm:pr-2 flex-shrink-0 pt-1">
-                        <Button variant="ghost" size="icon" onClick={() => copyLine(line)} aria-label="Copy line">
+                         <Popover>
+                            <PopoverTrigger asChild>
+                               <Button variant="ghost" size="icon" aria-label="Gaya baris">
+                                 <Wand2 className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
+                               </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-1">
+                                <div className="flex flex-col gap-1">
+                                    <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'heading')}>Judul</Button>
+                                    <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'normal')}>Normal</Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                        <Button variant="ghost" size="icon" onClick={() => copyLine(line.text)} aria-label="Salin baris">
                           <Copy className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(index)} aria-label="Remove line">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(line.id)} aria-label="Hapus baris">
                           <X className="w-4 h-4 text-destructive/70 hover:text-destructive transition-colors" />
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
-                <Button variant="outline" size="sm" onClick={handleAddLine} className="mt-4 text-accent border-accent/50 hover:bg-accent/10 hover:text-accent">
+                <Button variant="outline" size="sm" onClick={() => handleAddLine()} className="mt-4 text-accent border-accent/50 hover:bg-accent/10 hover:text-accent">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Line
+                  Tambah Baris
                 </Button>
               </CardContent>
             </Card>
@@ -331,3 +414,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
