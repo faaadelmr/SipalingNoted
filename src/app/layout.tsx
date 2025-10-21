@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'SipintarNoted',
-  description: 'Atur catatan Anda dengan tab dan salin baris demi baris dengan mudah.',
+  title: 'SipalingNoted',
+  description: 'Catatan itu harusnya mudah di copy.',
 };
 
 export default function RootLayout({
@@ -36,5 +36,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    

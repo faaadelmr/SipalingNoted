@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -40,7 +39,7 @@ const defaultTabs: Tab[] = [
     id: '1', 
     title: 'Catatan Pertamaku', 
     content: [
-      { id: Date.now() + '1', text: 'Selamat Datang di SipintarNoted!', style: 'heading'},
+      { id: Date.now() + '1', text: 'Selamat Datang di SipalingNoted!', style: 'heading'},
       { id: Date.now() + '2', text: '- Ini adalah baris pertamamu.', style: 'normal'},
       { id: Date.now() + '3', text: '- Klik dua kali pada judul tab untuk mengeditnya.', style: 'normal'},
       { id: Date.now() + '4', text: '- Tambahkan baris baru di bawah.', style: 'normal'}
@@ -61,8 +60,8 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     try {
-      const savedTabs = localStorage.getItem('sipintar-notes-tabs');
-      const savedActiveTab = localStorage.getItem('sipintar-notes-activeTab');
+      const savedTabs = localStorage.getItem('sipaling-notes-tabs') || localStorage.getItem('sipintar-notes-tabs');
+      const savedActiveTab = localStorage.getItem('sipaling-notes-activeTab') || localStorage.getItem('sipintar-notes-activeTab');
       
       let parsedTabs: Tab[] = [];
 
@@ -80,7 +79,13 @@ export default function Home() {
               })),
             };
           }
-          return tab;
+          // Pastikan setiap baris memiliki properti 'style'
+          const contentWithStyle = tab.content.map((line: any) => ({
+            ...line,
+            style: line.style || 'normal',
+          }));
+
+          return { ...tab, content: contentWithStyle };
         });
 
         if (Array.isArray(parsedTabs) && parsedTabs.length > 0) {
@@ -107,9 +112,14 @@ export default function Home() {
 
   useEffect(() => {
     if (isMounted) {
-      localStorage.setItem('sipintar-notes-tabs', JSON.stringify(tabs));
+      localStorage.setItem('sipaling-notes-tabs', JSON.stringify(tabs));
       if (activeTab) {
-        localStorage.setItem('sipintar-notes-activeTab', activeTab);
+        localStorage.setItem('sipaling-notes-activeTab', activeTab);
+      }
+      // Hapus kunci lama setelah migrasi
+      if (localStorage.getItem('sipintar-notes-tabs')) {
+        localStorage.removeItem('sipintar-notes-tabs');
+        localStorage.removeItem('sipintar-notes-activeTab');
       }
     }
   }, [tabs, activeTab, isMounted]);
@@ -177,7 +187,7 @@ export default function Home() {
         if (tab.id !== activeTab) return tab;
         
         const newLine: Line = { id: Date.now().toString(), text: '', style: 'normal'};
-        const newContent = [...tab.content];
+        let newContent = [...tab.content];
         
         if (afterLineId) {
             const index = newContent.findIndex(line => line.id === afterLineId);
@@ -187,7 +197,11 @@ export default function Home() {
                  newContent.push(newLine);
             }
         } else {
-            newContent.push(newLine);
+            if (newContent.length === 1 && newContent[0].text === '') {
+              newContent = [newLine];
+            } else {
+              newContent.push(newLine);
+            }
         }
 
         return { ...tab, content: newContent };
@@ -208,18 +222,46 @@ export default function Home() {
     }));
   };
 
-  const copyLine = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+  const copyLine = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback untuk lingkungan tidak aman
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Mencegah scroll ke bawah saat elemen ditambahkan
+        textArea.style.position = "fixed";
+        textArea.style.top = "-9999px";
+        textArea.style.left = "-9999px";
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+        } catch (err) {
+          throw new Error('Fallback copy command failed');
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
+
       toast({
         title: 'Disalin ke papan klip!',
         description: `"${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`,
       });
-    }, () => {
+
+    } catch (error) {
       toast({
         variant: "destructive",
         title: 'Gagal menyalin!',
+        description: 'Papan klip tidak dapat diakses dari browser Anda.'
       });
-    });
+      console.error('Copy failed', error);
+    }
   };
 
   const handleStartEditingTitle = (tab: Tab) => {
@@ -261,8 +303,8 @@ export default function Home() {
         <div className="flex items-center gap-2 md:gap-4">
           <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipintarNoted</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Catatan sederhana dan cerdas Anda, terorganisir.</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipalingNoted</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Catatan itu harusnya mudah di copy.</p>
           </div>
         </div>
         <DropdownMenu>
@@ -414,5 +456,3 @@ export default function Home() {
     </main>
   );
 }
-
-    

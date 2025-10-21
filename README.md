@@ -1,4 +1,4 @@
-# SipintarNoted
+# SipalingNoted
 
 This is a Next.js application that provides a simple and smart note-taking experience.
 
