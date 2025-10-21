@@ -1,0 +1,21 @@
+{
+  "name": "SipalingNoted",
+  "short_name": "SipalingNoted",
+  "description": "Catatan itu harusnya mudah di copy.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#d5f3ff",
+  "theme_color": "#d5f3ff",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
