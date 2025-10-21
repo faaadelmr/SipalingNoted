@@ -1,0 +1,23 @@
+diff --git a/node_modules/@ducanh2912/next-pwa/dist/index.js b/node_modules/@ducanh2912/next-pwa/dist/index.js
+index f3443a5..1156a65 100644
+--- a/node_modules/@ducanh2912/next-pwa/dist/index.js
++++ b/node_modules/@ducanh2912/next-pwa/dist/index.js
+@@ -32,7 +32,7 @@ const withPWA = ({
+   register = true,
+   skipWaiting = true,
+   swcMinify = true,
+-  disable = false,
++  disable = false, // We will ignore this and force it to false
+   buildExcludes = [],
+   fallbacks = {},
+   cacheStartUrl = true,
+@@ -48,7 +48,7 @@ const withPWA = ({
+   const pwaEnabled = !isDev || isDevFallback;
+   if (
+     !pwaEnabled &&
+-    disable !== false
++    false // Always enable PWA regardless of disable prop
+   ) {
+     console.log("next-pwa: PWA is disabled");
+     return {
+

@@ -60,8 +60,8 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     try {
-      const savedTabs = localStorage.getItem('sipaling-notes-tabs') || localStorage.getItem('sipintar-notes-tabs');
-      const savedActiveTab = localStorage.getItem('sipaling-notes-activeTab') || localStorage.getItem('sipintar-notes-activeTab');
+      const savedTabs = localStorage.getItem('sipaling-notes-tabs');
+      const savedActiveTab = localStorage.getItem('sipaling-notes-activeTab');
       
       let parsedTabs: Tab[] = [];
 
@@ -115,11 +115,6 @@ export default function Home() {
       localStorage.setItem('sipaling-notes-tabs', JSON.stringify(tabs));
       if (activeTab) {
         localStorage.setItem('sipaling-notes-activeTab', activeTab);
-      }
-      // Hapus kunci lama setelah migrasi
-      if (localStorage.getItem('sipintar-notes-tabs')) {
-        localStorage.removeItem('sipintar-notes-tabs');
-        localStorage.removeItem('sipintar-notes-activeTab');
       }
     }
   }, [tabs, activeTab, isMounted]);
@@ -227,11 +222,9 @@ export default function Home() {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback untuk lingkungan tidak aman
         const textArea = document.createElement("textarea");
         textArea.value = text;
         
-        // Mencegah scroll ke bawah saat elemen ditambahkan
         textArea.style.position = "fixed";
         textArea.style.top = "-9999px";
         textArea.style.left = "-9999px";
@@ -468,9 +461,8 @@ export default function Home() {
           ))}
         </Tabs>
       </div>
-
-      <footer className="text-center py-4 mt-8 text-sm text-muted-foreground">
-        created by{' '}
+      <footer className="text-center mt-8 py-4 text-sm text-muted-foreground">
+        dibuat oleh{' '}
         <a
           href="https://faaadelmr.pages.dev"
           target="_blank"
