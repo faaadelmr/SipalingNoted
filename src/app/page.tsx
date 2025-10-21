@@ -461,17 +461,6 @@ export default function Home() {
           ))}
         </Tabs>
       </div>
-      <footer className="text-center mt-8 py-4 text-sm text-muted-foreground">
-        dibuat oleh{' '}
-        <a
-          href="https://faaadelmr.pages.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline hover:text-foreground"
-        >
-          faaadelmr
-        </a>
-      </footer>
     </main>
   );
 }
