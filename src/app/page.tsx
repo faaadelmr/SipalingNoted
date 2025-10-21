@@ -298,12 +298,25 @@ export default function Home() {
   const currentTab = tabs.find(t => t.id === activeTab);
 
   return (
-    <main className="container mx-auto p-4 md:p-8 font-headline">
-      <header className="flex items-center justify-between gap-2 md:gap-4 mb-6">
+    <main className="container mx-auto p-4 md:p-8 font-headline flex flex-col min-h-screen">
+      <header className="flex items-start justify-between gap-2 md:gap-4 mb-6">
         <div className="flex items-center gap-2 md:gap-4">
-          <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" />
+          <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0 mt-1" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipalingNoted</h1>
+            <div className="flex items-baseline gap-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipalingNoted</h1>
+              <span className="text-xs md:text-sm text-muted-foreground font-normal">
+                by{' '}
+                <a
+                  href="https://faaadelmr.pages.dev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline hover:text-foreground"
+                >
+                  faaadelmr
+                </a>
+              </span>
+            </div>
             <p className="text-sm md:text-base text-muted-foreground">Catatan itu harusnya mudah di copy.</p>
           </div>
         </div>
@@ -334,125 +347,139 @@ export default function Home() {
         </DropdownMenu>
       </header>
       
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="flex items-center border-b">
-           <ScrollArea className="w-full whitespace-nowrap">
-            <TabsList className="bg-transparent p-0 border-0 h-auto">
-              {tabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className={cn(
-                    "relative group mr-1 border-b-2 border-transparent rounded-b-none data-[state=active]:border-accent data-[state=active]:text-accent data-[state=active]:shadow-none hover:bg-muted/50 py-3 px-4 transition-colors",
-                    editingTabId === tab.id ? 'p-0' : ''
-                  )}
-                  onDoubleClick={() => handleStartEditingTitle(tab)}
-                >
-                  {editingTabId === tab.id ? (
-                     <Textarea
-                      ref={titleInputRef}
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onBlur={handleSaveTitle}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleSaveTitle();
-                        }
-                      }}
-                      className="h-full px-4 py-3 text-sm bg-background/50 focus-visible:ring-accent w-full resize-none overflow-hidden min-h-[40px] text-center"
-                      rows={1}
-                      onInput={(e) => autoResizeTextarea(e.currentTarget)}
-                    />
-                  ) : (
-                    <>
-                      <span className="max-w-[100px] md:max-w-[150px] truncate" title={tab.title}>{tab.title}</span>
-                       <Button
-                        asChild
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Hapus tab"
-                        className="absolute top-1/2 right-0 -translate-y-1/2 w-6 h-6 ml-2 opacity-0 group-hover:opacity-100 data-[state=active]:opacity-100 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); handleRemoveTab(tab.id); }}
-                      >
-                        <div>
-                          <X className="w-4 h-4" />
-                        </div>
-                      </Button>
-                    </>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-          <Button variant="ghost" size="icon" onClick={() => handleAddTab()} className="ml-2" aria-label="Tambah tab baru">
-            <Plus className="w-5 h-5 text-accent hover:text-accent/80 transition-colors" />
-          </Button>
-        </div>
-        
-        {tabs.map((tab) => (
-          <TabsContent key={tab.id} value={tab.id}>
-            <Card className="mt-4 shadow-md border-transparent bg-card/50">
-              <CardContent className="p-2 md:p-6">
-                <div className="space-y-1">
-                  {currentTab && currentTab.id === tab.id && currentTab.content.map((line, index) => (
-                    <div key={line.id} className="flex items-start group gap-1 sm:gap-2 rounded-md hover:bg-muted/50 transition-colors">
+      <div className="flex-grow">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <div className="flex items-center border-b">
+            <ScrollArea className="w-full whitespace-nowrap">
+              <TabsList className="bg-transparent p-0 border-0 h-auto">
+                {tabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className={cn(
+                      "relative group mr-1 border-b-2 border-transparent rounded-b-none data-[state=active]:border-accent data-[state=active]:text-accent data-[state=active]:shadow-none hover:bg-muted/50 py-3 px-4 transition-colors",
+                      editingTabId === tab.id ? 'p-0' : ''
+                    )}
+                    onDoubleClick={() => handleStartEditingTitle(tab)}
+                  >
+                    {editingTabId === tab.id ? (
                       <Textarea
-                        value={line.text}
-                        onChange={(e) => {
-                          updateLine(line.id, e.target.value);
-                          autoResizeTextarea(e.target);
-                        }}
-                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAddLine(line.id);
-                            }
-                         }}
-                        placeholder="Ketik sesuatu..."
-                        className={cn(
-                          "flex-grow bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 resize-none overflow-hidden min-h-[40px]",
-                          {
-                            'text-lg md:text-xl font-bold': line.style === 'heading',
-                            'text-base': line.style === 'normal',
+                        ref={titleInputRef}
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={handleSaveTitle}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveTitle();
                           }
-                        )}
+                        }}
+                        className="h-full px-4 py-3 text-sm bg-background/50 focus-visible:ring-accent w-full resize-none overflow-hidden min-h-[40px] text-center"
                         rows={1}
+                        onInput={(e) => autoResizeTextarea(e.currentTarget)}
                       />
-                      <div className="flex items-center opacity-100 md:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pr-1 sm:pr-2 flex-shrink-0 pt-1">
-                         <Popover>
-                            <PopoverTrigger asChild>
-                               <Button variant="ghost" size="icon" aria-label="Gaya baris">
-                                 <Wand2 className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
-                               </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-1">
-                                <div className="flex flex-col gap-1">
-                                    <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'heading')}>Judul</Button>
-                                    <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'normal')}>Normal</Button>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                        <Button variant="ghost" size="icon" onClick={() => copyLine(line.text)} aria-label="Salin baris">
-                          <Copy className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
+                    ) : (
+                      <>
+                        <span className="max-w-[100px] md:max-w-[150px] truncate" title={tab.title}>{tab.title}</span>
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Hapus tab"
+                          className="absolute top-1/2 right-0 -translate-y-1/2 w-6 h-6 ml-2 opacity-0 group-hover:opacity-100 data-[state=active]:opacity-100 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveTab(tab.id); }}
+                        >
+                          <div>
+                            <X className="w-4 h-4" />
+                          </div>
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(line.id)} aria-label="Hapus baris">
-                          <X className="w-4 h-4 text-destructive/70 hover:text-destructive transition-colors" />
-                        </Button>
+                      </>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+            <Button variant="ghost" size="icon" onClick={() => handleAddTab()} className="ml-2" aria-label="Tambah tab baru">
+              <Plus className="w-5 h-5 text-accent hover:text-accent/80 transition-colors" />
+            </Button>
+          </div>
+          
+          {tabs.map((tab) => (
+            <TabsContent key={tab.id} value={tab.id}>
+              <Card className="mt-4 shadow-md border-transparent bg-card/50">
+                <CardContent className="p-2 md:p-6">
+                  <div className="space-y-1">
+                    {currentTab && currentTab.id === tab.id && currentTab.content.map((line, index) => (
+                      <div key={line.id} className="flex items-start group gap-1 sm:gap-2 rounded-md hover:bg-muted/50 transition-colors">
+                        <Textarea
+                          value={line.text}
+                          onChange={(e) => {
+                            updateLine(line.id, e.target.value);
+                            autoResizeTextarea(e.target);
+                          }}
+                          onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleAddLine(line.id);
+                              }
+                          }}
+                          placeholder="Ketik sesuatu..."
+                          className={cn(
+                            "flex-grow bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 resize-none overflow-hidden min-h-[40px]",
+                            {
+                              'text-lg md:text-xl font-bold': line.style === 'heading',
+                              'text-base': line.style === 'normal',
+                            }
+                          )}
+                          rows={1}
+                        />
+                        <div className="flex items-center opacity-100 md:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pr-1 sm:pr-2 flex-shrink-0 pt-1">
+                          <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" aria-label="Gaya baris">
+                                  <Wand2 className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-1">
+                                  <div className="flex flex-col gap-1">
+                                      <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'heading')}>Judul</Button>
+                                      <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'normal')}>Normal</Button>
+                                  </div>
+                              </PopoverContent>
+                          </Popover>
+                          <Button variant="ghost" size="icon" onClick={() => copyLine(line.text)} aria-label="Salin baris">
+                            <Copy className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(line.id)} aria-label="Hapus baris">
+                            <X className="w-4 h-4 text-destructive/70 hover:text-destructive transition-colors" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" size="sm" onClick={() => handleAddLine()} className="mt-4 text-accent border-accent/50 hover:bg-accent/10 hover:text-accent">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Tambah Baris
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+                    ))}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handleAddLine()} className="mt-4 text-accent border-accent/50 hover:bg-accent/10 hover:text-accent">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Baris
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+
+      <footer className="text-center py-4 mt-8 text-sm text-muted-foreground">
+        created by{' '}
+        <a
+          href="https://faaadelmr.pages.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline hover:text-foreground"
+        >
+          faaadelmr
+        </a>
+      </footer>
     </main>
   );
 }
