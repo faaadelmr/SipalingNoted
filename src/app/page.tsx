@@ -1,15 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from "@/components/ui/card";
+import { Plus, X, Palette, GripVertical, Wand2, Copy, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Copy, NotebookText, Palette, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { useTheme } from "next-themes";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 type Line = {
   id: string;
@@ -28,97 +26,96 @@ type Line = {
   style: 'normal' | 'heading';
 };
 
-type Tab = {
+type Note = {
   id: string;
   title: string;
-  content: Line[];
+  lines: Line[];
 };
 
-const defaultTabs: Tab[] = [
-  { 
-    id: '1', 
-    title: 'Catatan Pertamaku', 
-    content: [
-      { id: Date.now() + '1', text: 'Selamat Datang di SipalingNoted!', style: 'heading'},
-      { id: Date.now() + '2', text: '- Ini adalah baris pertamamu.', style: 'normal'},
-      { id: Date.now() + '3', text: '- Klik dua kali pada judul tab untuk mengeditnya.', style: 'normal'},
-      { id: Date.now() + '4', text: '- Tambahkan baris baru di bawah.', style: 'normal'}
-    ] 
+const initialNotes: Note[] = [
+  {
+    id: 'note-1',
+    title: 'Catatan Selamat Datang',
+    lines: [
+      { id: 'line-1-1', text: 'Selamat datang di SipalingNoted!', style: 'heading' },
+      { id: 'line-1-2', text: 'Ini adalah aplikasi catatan berbasis tab yang membantumu tetap terorganisir.', style: 'normal' },
+      { id: 'line-1-3', text: 'Klik dua kali judul tab untuk mengubahnya.', style: 'normal' },
+      { id: 'line-1-4', text: 'Gunakan tombol (+) untuk menambah baris baru.', style: 'normal' },
+      { id: 'line-1-5', text: 'Seret dan lepas untuk mengatur ulang urutan baris.', style: 'normal' },
+    ],
   },
 ];
 
+const themes = [
+    { name: "Default", class: "theme-default" },
+    { name: "Mawar", class: "theme-rose" },
+    { name: "Hijau", class: "theme-green" },
+    { name: "Jeruk", class: "theme-orange" },
+    { name: "Gelap", class: "dark" },
+];
+
 export default function Home() {
-  const [tabs, setTabs] = useState<Tab[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('');
-  const [editingTabId, setEditingTabId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>('');
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
-  const titleInputRef = useRef<HTMLTextAreaElement>(null);
-  const { setTheme } = useTheme();
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+  const [activeTheme, setActiveTheme] = useState(themes[0].class);
 
+  // Load from localStorage
   useEffect(() => {
     setIsMounted(true);
     try {
-      const savedTabs = localStorage.getItem('sipaling-notes-tabs');
-      const savedActiveTab = localStorage.getItem('sipaling-notes-activeTab');
-      
-      let parsedTabs: Tab[] = [];
+      const savedNotes = localStorage.getItem('sipaling-noted-notes');
+      const savedActiveTabId = localStorage.getItem('sipaling-noted-activeTabId');
+      const savedTheme = localStorage.getItem('sipaling-noted-theme');
 
-      if (savedTabs) {
-        const rawTabs = JSON.parse(savedTabs);
-        // Migrasi data dari format lama
-        parsedTabs = rawTabs.map((tab: any) => {
-          if (typeof tab.content === 'string') {
-            return {
-              ...tab,
-              content: tab.content.split('\n').map((lineText: string) => ({
-                id: Date.now() + Math.random().toString(),
-                text: lineText,
-                style: 'normal',
-              })),
-            };
-          }
-          // Pastikan setiap baris memiliki properti 'style'
-          const contentWithStyle = tab.content.map((line: any) => ({
-            ...line,
-            style: line.style || 'normal',
-          }));
-
-          return { ...tab, content: contentWithStyle };
-        });
-
-        if (Array.isArray(parsedTabs) && parsedTabs.length > 0) {
-            setTabs(parsedTabs);
-            if (savedActiveTab && parsedTabs.some((t: Tab) => t.id === savedActiveTab)) {
-                setActiveTab(savedActiveTab);
-            } else {
-                setActiveTab(parsedTabs[0].id);
-            }
-        } else {
-            setTabs(defaultTabs);
-            setActiveTab(defaultTabs[0].id);
-        }
+      if (savedNotes) {
+        setNotes(JSON.parse(savedNotes));
       } else {
-        setTabs(defaultTabs);
-        setActiveTab(defaultTabs[0].id);
+        setNotes(initialNotes);
       }
+
+      if (savedActiveTabId) {
+        setActiveTabId(savedActiveTabId);
+      } else if (initialNotes.length > 0) {
+        setActiveTabId(initialNotes[0].id);
+      }
+      
+      if (savedTheme) {
+        setActiveTheme(savedTheme);
+      }
+
     } catch (error) {
-      console.error("Gagal memuat catatan dari localStorage", error);
-      setTabs(defaultTabs);
-      setActiveTab(defaultTabs[0].id);
+      console.error("Failed to load from localStorage", error);
+      setNotes(initialNotes);
+      if (initialNotes.length > 0) {
+        setActiveTabId(initialNotes[0].id);
+      }
     }
   }, []);
 
+  // Save to localStorage
   useEffect(() => {
     if (isMounted) {
-      localStorage.setItem('sipaling-notes-tabs', JSON.stringify(tabs));
-      if (activeTab) {
-        localStorage.setItem('sipaling-notes-activeTab', activeTab);
+      localStorage.setItem('sipaling-noted-notes', JSON.stringify(notes));
+      if (activeTabId) {
+        localStorage.setItem('sipaling-noted-activeTabId', activeTabId);
       }
+      localStorage.setItem('sipaling-noted-theme', activeTheme);
     }
-  }, [tabs, activeTab, isMounted]);
+  }, [notes, activeTabId, isMounted, activeTheme]);
+  
+  // Apply theme class to body
+  useEffect(() => {
+    document.body.className = '';
+    document.body.classList.add(activeTheme);
+  }, [activeTheme]);
 
+  // Handle editing tab title
   useEffect(() => {
     if (editingTabId && titleInputRef.current) {
       titleInputRef.current.focus();
@@ -127,345 +124,315 @@ export default function Home() {
   }, [editingTabId]);
 
   const autoResizeTextarea = (element: HTMLTextAreaElement) => {
-    if (element) {
-      element.style.height = 'auto';
-      element.style.height = (element.scrollHeight) + 'px';
-    }
+    element.style.height = 'auto';
+    element.style.height = `${element.scrollHeight}px`;
   };
 
-  useEffect(() => {
-    document.querySelectorAll('textarea').forEach(textarea => {
-      autoResizeTextarea(textarea);
-    });
-  }, [tabs, activeTab]);
-
-  const handleAddTab = () => {
-    const newTabId = Date.now().toString();
-    const newTab: Tab = {
-      id: newTabId,
-      title: `Catatan ${tabs.length + 1}`,
-      content: [{id: Date.now().toString(), text: '', style: 'normal' }],
-    };
-    setTabs([...tabs, newTab]);
-    setActiveTab(newTabId);
-  };
-
-  const handleRemoveTab = (tabId: string) => {
-    if (tabs.length === 1) {
-      toast({
-        variant: "destructive",
-        title: "Tidak dapat menghapus tab terakhir",
-        description: "Anda harus memiliki setidaknya satu catatan.",
-      });
-      return;
-    }
-
-    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
-    const newTabs = tabs.filter((tab) => tab.id !== tabId);
-    setTabs(newTabs);
-
-    if (activeTab === tabId) {
-       const newActiveIndex = Math.max(0, tabIndex - 1);
-       setActiveTab(newTabs[newActiveIndex]?.id || '');
-    }
-  };
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-  };
-
-  const updateLine = (lineId: string, newText: string) => {
-    setTabs(tabs.map(tab => {
-        if (tab.id !== activeTab) return tab;
-        const newContent = tab.content.map(line => line.id === lineId ? { ...line, text: newText } : line);
-        return { ...tab, content: newContent };
-    }));
-  };
-
-  const updateLineStyle = (lineId: string, newStyle: 'normal' | 'heading') => {
-     setTabs(tabs.map(tab => {
-        if (tab.id !== activeTab) return tab;
-        const newContent = tab.content.map(line => line.id === lineId ? { ...line, style: newStyle } : line);
-        return { ...tab, content: newContent };
-    }));
-  }
-  
-  const handleAddLine = (afterLineId?: string) => {
-     setTabs(tabs.map(tab => {
-        if (tab.id !== activeTab) return tab;
-        
-        const newLine: Line = { id: Date.now().toString(), text: '', style: 'normal'};
-        let newContent = [...tab.content];
-        
-        if (afterLineId) {
-            const index = newContent.findIndex(line => line.id === afterLineId);
-            if (index > -1) {
-                newContent.splice(index + 1, 0, newLine);
-            } else {
-                 newContent.push(newLine);
-            }
-        } else {
-            if (newContent.length === 1 && newContent[0].text === '') {
-              newContent = [newLine];
-            } else {
-              newContent.push(newLine);
-            }
+  const handleTextChange = (noteId: string, lineId: string, newText: string) => {
+    setNotes(notes.map(note =>
+      note.id === noteId
+        ? {
+          ...note,
+          lines: note.lines.map(line =>
+            line.id === lineId ? { ...line, text: newText } : line
+          ),
         }
-
-        return { ...tab, content: newContent };
-    }));
+        : note
+    ));
   };
 
-
-  const handleRemoveLine = (lineId: string) => {
-    setTabs(tabs.map(tab => {
-        if (tab.id !== activeTab) return tab;
-
-        if (tab.content.length <= 1) {
-            return { ...tab, content: [{ id: Date.now().toString(), text: '', style: 'normal'}] };
-        }
-
-        const newContent = tab.content.filter(line => line.id !== lineId);
-        return { ...tab, content: newContent };
-    }));
-  };
-
-  const copyLine = async (text: string) => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        
-        textArea.style.position = "fixed";
-        textArea.style.top = "-9999px";
-        textArea.style.left = "-9999px";
-
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-          document.execCommand('copy');
-        } catch (err) {
-          throw new Error('Fallback copy command failed');
-        } finally {
-          document.body.removeChild(textArea);
-        }
+  const addNewLine = (noteId: string, afterLineId?: string) => {
+    const newLine: Line = { id: `line-${Date.now()}`, text: '', style: 'normal' };
+    setNotes(notes.map(note => {
+      if (note.id === noteId) {
+        const newLines = [...note.lines];
+        const index = afterLineId ? newLines.findIndex(l => l.id === afterLineId) + 1 : newLines.length;
+        newLines.splice(index, 0, newLine);
+        return { ...note, lines: newLines };
       }
+      return note;
+    }));
+    setTimeout(() => {
+      const newTextarea = document.querySelector(`[data-line-id="${newLine.id}"] textarea`) as HTMLTextAreaElement;
+      newTextarea?.focus();
+    }, 0);
+  };
 
-      toast({
-        title: 'Disalin ke papan klip!',
-        description: `"${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`,
-      });
-
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: 'Gagal menyalin!',
-        description: 'Papan klip tidak dapat diakses dari browser Anda.'
-      });
-      console.error('Copy failed', error);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, noteId: string, lineId: string) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addNewLine(noteId, lineId);
+    } else if (e.key === 'Backspace' && e.currentTarget.value === '') {
+        const activeNote = notes.find(n => n.id === activeTabId);
+        if (activeNote && activeNote.lines.length > 1) {
+            e.preventDefault();
+            removeLine(noteId, lineId);
+        }
     }
   };
 
-  const handleStartEditingTitle = (tab: Tab) => {
-    setEditingTabId(tab.id);
-    setEditingTitle(tab.title);
+  const removeLine = (noteId: string, lineId: string) => {
+    let focusPrevious = false;
+    setNotes(notes.map(note => {
+      if (note.id === noteId) {
+        const lineIndex = note.lines.findIndex(l => l.id === lineId);
+        if (lineIndex > 0) focusPrevious = true;
+        const newLines = note.lines.filter(line => line.id !== lineId);
+        if (newLines.length === 0) {
+            newLines.push({ id: `line-${Date.now()}`, text: '', style: 'normal' });
+        }
+        if (focusPrevious) {
+            setTimeout(() => {
+                const prevLine = note.lines[lineIndex - 1];
+                const prevTextarea = document.querySelector(`[data-line-id="${prevLine.id}"] textarea`) as HTMLTextAreaElement;
+                prevTextarea?.focus();
+            }, 0);
+        }
+        return { ...note, lines: newLines };
+      }
+      return note;
+    }));
   };
 
-  const handleSaveTitle = () => {
-    if (!editingTabId) return;
-    setTabs(tabs.map(tab => tab.id === editingTabId ? { ...tab, title: editingTitle.trim() || "Tanpa Judul" } : tab));
-    setEditingTabId(null);
+  const addNewTab = () => {
+    const newNote: Note = {
+      id: `note-${Date.now()}`,
+      title: 'Tanpa Judul',
+      lines: [{ id: `line-${Date.now()}-1`, text: '', style: 'normal' }],
+    };
+    setNotes([...notes, newNote]);
+    setActiveTabId(newNote.id);
   };
+
+  const removeTab = (noteIdToRemove: string) => {
+    const noteIndex = notes.findIndex(note => note.id === noteIdToRemove);
+    const newNotes = notes.filter(note => note.id !== noteIdToRemove);
+
+    if (newNotes.length === 0) {
+        const newNote: Note = {
+            id: `note-${Date.now()}`,
+            title: 'Tanpa Judul',
+            lines: [{ id: `line-${Date.now()}-1`, text: '', style: 'normal' }],
+        };
+        setNotes([newNote]);
+        setActiveTabId(newNote.id);
+    } else if (activeTabId === noteIdToRemove) {
+      const newActiveIndex = Math.max(0, noteIndex - 1);
+      setActiveTabId(newNotes[newActiveIndex].id);
+      setNotes(newNotes);
+    } else {
+      setNotes(newNotes);
+    }
+  };
+
+  const handleTitleChange = (noteId: string, newTitle: string) => {
+    setNotes(notes.map(note =>
+      note.id === noteId ? { ...note, title: newTitle } : note
+    ));
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      setEditingTabId(null);
+    }
+  };
+
+  const handleDragSort = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    const activeNote = notes.find(n => n.id === activeTabId);
+    if (!activeNote) return;
+
+    const newLines = [...activeNote.lines];
+    const draggedItemContent = newLines.splice(dragItem.current, 1)[0];
+    newLines.splice(dragOverItem.current, 0, draggedItemContent);
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+
+    setNotes(notes.map(n => n.id === activeTabId ? { ...n, lines: newLines } : n));
+  };
+
+  const handleStyleLine = (noteId: string, lineId: string) => {
+     setNotes(notes.map(note => {
+      if (note.id === noteId) {
+        return {
+          ...note,
+          lines: note.lines.map(line => {
+            if (line.id === lineId) {
+              return { ...line, style: line.style === 'heading' ? 'normal' : 'heading' };
+            }
+            return line;
+          })
+        };
+      }
+      return note;
+    }));
+  };
+  
+  const handleCopyLine = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+        toast({ title: "Tersalin!", description: "Baris telah disalin ke papan klip." });
+    });
+  };
+
+  const activeNote = notes.find(note => note.id === activeTabId);
 
   if (!isMounted) {
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary"></div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary"></div>
+      </div>
     );
   }
 
-  const currentTab = tabs.find(t => t.id === activeTab);
-
   return (
-    <main className="container mx-auto p-4 md:p-8 font-headline flex flex-col h-screen max-h-screen overflow-hidden">
-      <header className="flex items-start justify-between gap-2 md:gap-4 mb-6">
-        <div className="flex items-center gap-2 md:gap-4">
-          <NotebookText className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0 mt-1" />
-          <div>
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">SipalingNoted</h1>
-              <span className="text-xs md:text-sm text-muted-foreground font-normal">
-                by{' '}
-                <a
-                  href="https://faaadelmr.pages.dev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline hover:text-foreground"
-                >
-                  faaadelmr
-                </a>
-              </span>
-            </div>
-            <p className="text-sm md:text-base text-muted-foreground">Catatan itu harusnya mudah di copy.</p>
-          </div>
+    <div className="flex flex-col h-screen bg-background text-foreground font-body">
+      {/* Header */}
+      <header className="flex items-center justify-between p-2 border-b border-border">
+        <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold font-headline text-primary">SipalingNoted</h1>
+            <a href="https://faaadelmr.pages.dev" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                by faaadelmr
+            </a>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Palette className="h-5 w-5" />
-              <span className="sr-only">Ubah tema</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme("theme-default")}>
-              Default
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("theme-rose")}>
-              Mawar
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("theme-green")}>
-              Hijau
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("theme-orange")}>
-              Jeruk
-            </DropdownMenuItem>
-             <DropdownMenuItem onClick={() => setTheme("dark")}>
-              Gelap
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+           <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Palette className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {themes.map((theme) => (
+                <DropdownMenuItem key={theme.name} onClick={() => setActiveTheme(theme.class)}>
+                  {theme.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
-      
-      <div className="flex-grow flex flex-col min-h-0">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow min-h-0">
-          <div className="flex items-center border-b">
-            <ScrollArea className="w-full whitespace-nowrap">
-              <TabsList className="bg-transparent p-0 border-0 h-auto">
-                {tabs.map((tab) => (
+
+      <div className="flex flex-col flex-grow min-h-0">
+        <Tabs value={activeTabId} onValueChange={setActiveTabId} className="flex flex-col flex-grow">
+          {/* Tab List */}
+          <div className="flex-shrink-0 p-2 border-b border-border">
+             <ScrollArea className="w-full">
+              <TabsList className="p-0 bg-transparent">
+                <div className="flex items-center gap-1">
+                {notes.map(note => (
                   <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
+                    key={note.id}
+                    value={note.id}
                     className={cn(
-                      "relative group mr-1 border-b-2 border-transparent rounded-b-none data-[state=active]:border-accent data-[state=active]:text-accent data-[state=active]:shadow-none hover:bg-muted/50 py-3 px-4 transition-colors",
-                      editingTabId === tab.id ? 'p-0' : ''
+                      "relative flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-transparent",
+                      activeTabId === note.id ? "bg-primary/10 border-primary text-primary" : "text-muted-foreground hover:bg-muted"
                     )}
-                    onDoubleClick={() => handleStartEditingTitle(tab)}
+                    onDoubleClick={() => setEditingTabId(note.id)}
                   >
-                    {editingTabId === tab.id ? (
-                      <Textarea
+                    {editingTabId === note.id ? (
+                      <input
                         ref={titleInputRef}
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onBlur={handleSaveTitle}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleSaveTitle();
-                          }
-                        }}
-                        className="h-full px-4 py-3 text-sm bg-background/50 focus-visible:ring-accent w-full resize-none overflow-hidden min-h-[40px] text-center"
-                        rows={1}
-                        onInput={(e) => autoResizeTextarea(e.currentTarget)}
+                        type="text"
+                        value={note.title}
+                        onChange={(e) => handleTitleChange(note.id, e.target.value)}
+                        onBlur={() => setEditingTabId(null)}
+                        onKeyDown={handleTitleKeyDown}
+                        className="bg-transparent focus:outline-none"
                       />
                     ) : (
-                      <>
-                        <span title={tab.title}>{tab.title}</span>
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Hapus tab"
-                          className="absolute top-1/2 right-0 -translate-y-1/2 w-6 h-6 ml-2 opacity-0 group-hover:opacity-100 data-[state=active]:opacity-100 transition-opacity"
-                          onClick={(e) => { e.stopPropagation(); handleRemoveTab(tab.id); }}
-                        >
-                          <div>
-                            <X className="w-4 h-4" />
-                          </div>
-                        </Button>
-                      </>
+                      <span>{note.title}</span>
                     )}
+                     <div
+                      role="button"
+                      aria-label="Remove tab"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeTab(note.id);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className={cn(
+                        buttonVariants({ variant: 'ghost', size: 'icon' }),
+                        'w-5 h-5 ml-2 rounded-full hover:bg-destructive/20 hover:text-destructive'
+                      )}
+                    >
+                      <X className="w-3 h-3" />
+                    </div>
                   </TabsTrigger>
                 ))}
+                 <Button variant="ghost" size="icon" onClick={addNewTab} className="w-8 h-8 rounded-full">
+                  <Plus className="w-4 h-4" />
+                </Button>
+                </div>
               </TabsList>
-              <ScrollBar orientation="horizontal" />
             </ScrollArea>
-            <Button variant="ghost" size="icon" onClick={() => handleAddTab()} className="ml-2" aria-label="Tambah tab baru">
-              <Plus className="w-5 h-5 text-accent hover:text-accent/80 transition-colors" />
-            </Button>
           </div>
           
-          {tabs.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="flex-grow mt-4 min-h-0">
-              <Card className="shadow-md border-transparent bg-card/50 h-full flex flex-col">
-                <CardContent className="p-2 md:p-6 flex-grow flex flex-col min-h-0">
-                  <ScrollArea className="flex-grow">
-                    <div className="space-y-1 pr-4">
-                      {currentTab && currentTab.id === tab.id && currentTab.content.map((line, index) => (
-                        <div key={line.id} className="flex items-start group gap-1 sm:gap-2 rounded-md hover:bg-muted/50 transition-colors">
-                          <Textarea
-                            value={line.text}
-                            onChange={(e) => {
-                              updateLine(line.id, e.target.value);
-                              autoResizeTextarea(e.target);
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleAddLine(line.id);
-                                }
-                            }}
-                            placeholder="Ketik sesuatu..."
-                            className={cn(
-                              "flex-grow bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2 resize-none min-h-[40px]",
-                              {
-                                'text-lg md:text-xl font-bold': line.style === 'heading',
-                                'text-base': line.style === 'normal',
-                              }
-                            )}
-                            onInput={(e) => autoResizeTextarea(e.currentTarget)}
-                          />
-                          <div className="flex items-center opacity-100 md:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pr-1 sm:pr-2 flex-shrink-0 pt-1">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="ghost" size="icon" aria-label="Gaya baris">
-                                    <Wand2 className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-1">
-                                    <div className="flex flex-col gap-1">
-                                        <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'heading')}>Judul</Button>
-                                        <Button variant="ghost" className="justify-start px-2" onClick={() => updateLineStyle(line.id, 'normal')}>Normal</Button>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="ghost" size="icon" onClick={() => copyLine(line.text)} aria-label="Salin baris">
-                              <Copy className="w-4 h-4 text-muted-foreground hover:text-accent transition-colors" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(line.id)} aria-label="Hapus baris">
-                              <X className="w-4 h-4 text-destructive/70 hover:text-destructive transition-colors" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+          {/* Content Area */}
+          <ScrollArea className="flex-grow">
+            <div className="p-4 md:p-6">
+            {notes.map(note => (
+              <TabsContent key={note.id} value={note.id} className="mt-0">
+                {note.lines.map((line, index) => (
+                  <div
+                    key={line.id}
+                    data-line-id={line.id}
+                    className="flex items-start w-full gap-2 group"
+                    draggable
+                    onDragStart={() => dragItem.current = index}
+                    onDragEnter={() => dragOverItem.current = index}
+                    onDragEnd={handleDragSort}
+                    onDragOver={(e) => e.preventDefault()}
+                  >
+                    <div className="flex items-center h-10">
+                        <button className="cursor-grab opacity-30 hover:opacity-100 transition-opacity">
+                            <GripVertical className="w-4 h-4" />
+                        </button>
                     </div>
-                  </ScrollArea>
-                  <div className="pt-4">
-                    <Button variant="outline" size="sm" onClick={() => handleAddLine()} className="text-accent border-accent/50 hover:bg-accent/10 hover:text-accent">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Tambah Baris
-                    </Button>
+                    <Textarea
+                      value={line.text}
+                      onChange={(e) => {
+                        handleTextChange(note.id, line.id, e.target.value);
+                        autoResizeTextarea(e.currentTarget);
+                      }}
+                      onKeyDown={(e) => handleKeyDown(e, note.id, line.id)}
+                      onFocus={(e) => autoResizeTextarea(e.currentTarget)}
+                      ref={(el) => {
+                        if (el) {
+                            // Run on next frame to ensure rendering is complete
+                            setTimeout(() => autoResizeTextarea(el), 0);
+                        }
+                      }}
+                      className={cn(
+                        "flex-grow my-1 py-2 leading-7 resize-none",
+                        line.style === 'heading' ? 'text-2xl font-bold' : 'text-base'
+                      )}
+                      placeholder="Ketik sesuatu..."
+                    />
+                     <div className="flex items-center h-10 gap-1 transition-opacity">
+                       <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => handleStyleLine(note.id, line.id)}>
+                           <Wand2 className="w-4 h-4" />
+                       </Button>
+                       <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => handleCopyLine(line.text)}>
+                            <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive/50 hover:text-destructive" onClick={() => removeLine(note.id, line.id)}>
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
+                ))}
+                <div className="pl-12">
+                   <Button variant="ghost" onClick={() => addNewLine(note.id)} className="mt-2 text-muted-foreground">
+                        <Plus className="w-4 h-4 mr-2" /> Tambah Baris
+                    </Button>
+                </div>
+              </TabsContent>
+            ))}
+            </div>
+          </ScrollArea>
         </Tabs>
       </div>
-    </main>
+    </div>
   );
 }
