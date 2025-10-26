@@ -79,7 +79,7 @@ export default function Home() {
         setNotes(initialNotes);
       }
 
-      if (savedActiveTabId) {
+      if (savedActiveTabId && JSON.parse(savedNotes || '[]').some((n: Note) => n.id === savedActiveTabId)) {
         setActiveTabId(savedActiveTabId);
       } else if (initialNotes.length > 0) {
         setActiveTabId(initialNotes[0].id);
@@ -112,7 +112,7 @@ export default function Home() {
   // Apply theme class to body
   useEffect(() => {
     document.body.className = '';
-    document.body.classList.add(activeTheme);
+    document.body.classList.add(activeTheme, 'font-sans', 'antialiased');
   }, [activeTheme]);
 
   // Handle editing tab title
@@ -275,8 +275,6 @@ export default function Home() {
     });
   };
 
-  const activeNote = notes.find(note => note.id === activeTabId);
-
   if (!isMounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -288,7 +286,7 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
       {/* Header */}
-      <header className="flex items-center justify-between p-2 border-b border-border">
+      <header className="flex items-center justify-between flex-shrink-0 p-2 border-b border-border">
         <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold font-headline text-primary">SipalingNoted</h1>
             <a href="https://faaadelmr.pages.dev" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">
@@ -313,64 +311,64 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex flex-col flex-grow min-h-0">
-        <Tabs value={activeTabId} onValueChange={setActiveTabId} className="flex flex-col flex-grow">
-          {/* Tab List */}
-          <div className="flex-shrink-0 p-2 border-b border-border">
-             <ScrollArea className="w-full">
-              <TabsList className="p-0 bg-transparent">
-                <div className="flex items-center gap-1">
-                {notes.map(note => (
-                  <TabsTrigger
-                    key={note.id}
-                    value={note.id}
+      {/* Main Content */}
+      <Tabs value={activeTabId} onValueChange={setActiveTabId} className="flex flex-col flex-grow min-h-0">
+        {/* Tab List */}
+        <div className="flex-shrink-0 p-2 border-b border-border">
+           <ScrollArea className="w-full hide-scrollbar">
+            <TabsList className="p-0 bg-transparent">
+              <div className="flex items-center gap-1">
+              {notes.map(note => (
+                <TabsTrigger
+                  key={note.id}
+                  value={note.id}
+                  className={cn(
+                    "relative flex items-center text-sm rounded-md border border-transparent",
+                    activeTabId === note.id ? "bg-primary/10 border-primary text-primary" : "text-muted-foreground hover:bg-muted"
+                  )}
+                  onDoubleClick={() => setEditingTabId(note.id)}
+                >
+                  {editingTabId === note.id ? (
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={note.title}
+                      onChange={(e) => handleTitleChange(note.id, e.target.value)}
+                      onBlur={() => setEditingTabId(null)}
+                      onKeyDown={handleTitleKeyDown}
+                      className="bg-transparent focus:outline-none"
+                    />
+                  ) : (
+                    <span>{note.title}</span>
+                  )}
+                   <div
+                    role="button"
+                    aria-label="Remove tab"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeTab(note.id);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
                     className={cn(
-                      "relative flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-transparent",
-                      activeTabId === note.id ? "bg-primary/10 border-primary text-primary" : "text-muted-foreground hover:bg-muted"
+                      buttonVariants({ variant: 'ghost', size: 'icon' }),
+                      'w-5 h-5 ml-2 rounded-full hover:bg-destructive/20 hover:text-destructive'
                     )}
-                    onDoubleClick={() => setEditingTabId(note.id)}
                   >
-                    {editingTabId === note.id ? (
-                      <input
-                        ref={titleInputRef}
-                        type="text"
-                        value={note.title}
-                        onChange={(e) => handleTitleChange(note.id, e.target.value)}
-                        onBlur={() => setEditingTabId(null)}
-                        onKeyDown={handleTitleKeyDown}
-                        className="bg-transparent focus:outline-none"
-                      />
-                    ) : (
-                      <span>{note.title}</span>
-                    )}
-                     <div
-                      role="button"
-                      aria-label="Remove tab"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeTab(note.id);
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      className={cn(
-                        buttonVariants({ variant: 'ghost', size: 'icon' }),
-                        'w-5 h-5 ml-2 rounded-full hover:bg-destructive/20 hover:text-destructive'
-                      )}
-                    >
-                      <X className="w-3 h-3" />
-                    </div>
-                  </TabsTrigger>
-                ))}
-                 <Button variant="ghost" size="icon" onClick={addNewTab} className="w-8 h-8 rounded-full">
-                  <Plus className="w-4 h-4" />
-                </Button>
-                </div>
-              </TabsList>
-            </ScrollArea>
-          </div>
-          
-          {/* Content Area */}
-          <ScrollArea className="flex-grow">
-            <div className="p-4 md:p-6">
+                    <X className="w-3 h-3" />
+                  </div>
+                </TabsTrigger>
+              ))}
+               <Button variant="ghost" size="icon" onClick={addNewTab} className="w-8 h-8 rounded-full">
+                <Plus className="w-4 h-4" />
+              </Button>
+              </div>
+            </TabsList>
+          </ScrollArea>
+        </div>
+        
+        {/* Content Area */}
+        <ScrollArea className="flex-grow hide-scrollbar">
+          <div className="p-4 md:p-6">
             {notes.map(note => (
               <TabsContent key={note.id} value={note.id} className="mt-0">
                 {note.lines.map((line, index) => (
@@ -384,7 +382,7 @@ export default function Home() {
                     onDragEnd={handleDragSort}
                     onDragOver={(e) => e.preventDefault()}
                   >
-                    <div className="flex items-center h-10">
+                    <div className="flex items-center">
                         <button className="cursor-grab opacity-30 hover:opacity-100 transition-opacity">
                             <GripVertical className="w-4 h-4" />
                         </button>
@@ -399,17 +397,16 @@ export default function Home() {
                       onFocus={(e) => autoResizeTextarea(e.currentTarget)}
                       ref={(el) => {
                         if (el) {
-                            // Run on next frame to ensure rendering is complete
                             setTimeout(() => autoResizeTextarea(el), 0);
                         }
                       }}
                       className={cn(
-                        "flex-grow my-1 py-2 leading-7 resize-none",
+                        "flex-grow leading-normal resize-none",
                         line.style === 'heading' ? 'text-2xl font-bold' : 'text-base'
                       )}
                       placeholder="Ketik sesuatu..."
                     />
-                     <div className="flex items-center h-10 gap-1 transition-opacity">
+                     <div className="flex items-center gap-1">
                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => handleStyleLine(note.id, line.id)}>
                            <Wand2 className="w-4 h-4" />
                        </Button>
@@ -429,10 +426,9 @@ export default function Home() {
                 </div>
               </TabsContent>
             ))}
-            </div>
-          </ScrollArea>
-        </Tabs>
-      </div>
+          </div>
+        </ScrollArea>
+      </Tabs>
     </div>
   );
 }
